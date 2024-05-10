@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  php-fpm:
+    container_name: php-fpm
+    build:
+      context: ..
+      dockerfile: ./docker/php-fpm/Dockerfile
+      args:
+        - PUID=${PUID}
+        - PGID=${PGID}
+        - INSTALL_XDEBUG=${INSTALL_XDEBUG}
+#    environment:
+ #     PHP_IDE_CONFIG: "serverName=Docker"
+    volumes:
+      - ./../:/var/www/:rw
+      #- type: bind
+       # source: ./entrypoint.sh
+        #target: /docker-entrypoint.d/10-entrypoint.sh
+
+    depends_on:
+      - redis
+      - mysql
+    #entrypoint: sh -c "sleep 20 && php /var/www/laravel/artisan migrate"
+
+
+  nginx:
+    container_name: nginx
+    build:
+      context: nginx
+    ports:
+      - ${NGINX_HOST_HTTP_PORT}:80
+    volumes:
+      - ..:/var/www:rw
+    depends_on:
+      - php-fpm
+
+  mysql:
+    container_name: mysql
+    build:
+      context: mysql
+    ports:
+      - ${DB_PORT}:3306
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql:rw
+
+  redis:
+    container_name: redis
+    build:
+      context: redis
+    ports:
+      - ${REDIS_PORT}:6379
+    command: redis-server --save 20 1 --loglevel warning
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+
+volumes:
+  db_data:
+  redis_data:
+    driver: local
